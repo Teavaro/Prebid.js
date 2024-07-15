@@ -10,10 +10,10 @@ const ENDPOINT_URL = 'https://inv-nets.admixer.net/prebid.1.2.aspx';
 const ALIASES = [
   {code: 'go2net', endpoint: 'https://ads.go2net.com.ua/prebid.1.2.aspx'},
   'adblender',
-  {code: 'adsyield', endpoint: 'https://ads.adsyield.com/prebid.1.2.aspx'},
   {code: 'futureads', endpoint: 'https://ads.futureads.io/prebid.1.2.aspx'},
   {code: 'smn', endpoint: 'https://ads.smn.rs/prebid.1.2.aspx'},
   {code: 'admixeradx', endpoint: 'https://inv-nets.admixer.net/adxprebid.1.2.aspx'},
+  'rtbstack'
 ];
 export const spec = {
   code: BIDDER_CODE,
@@ -23,7 +23,9 @@ export const spec = {
    * Determines whether or not the given bid request is valid.
    */
   isBidRequestValid: function (bid) {
-    return !!bid.params.zone;
+    return bid.bidder === 'rtbstack'
+      ? !!bid.params.tagId
+      : !!bid.params.zone;
   },
   /**
    * Make a server request from the list of BidRequests.
@@ -49,8 +51,12 @@ export const spec = {
     };
     let endpointUrl;
     if (bidderRequest) {
-      const {bidderCode} = bidderRequest;
-      endpointUrl = config.getConfig(`${bidderCode}.endpoint_url`);
+      // checks if there is specified any endpointUrl in bidder config
+      endpointUrl = config.getConfig('bidderURL');
+      if (!endpointUrl && bidderRequest.bidderCode === 'rtbstack') {
+        logError('The bidderUrl config is required for RTB Stack bids. Please set it with setBidderConfig() for "rtbstack".');
+        return;
+      }
       // TODO: is 'page' the right value here?
       if (bidderRequest.refererInfo?.page) {
         payload.referrer = encodeURIComponent(bidderRequest.refererInfo.page);
@@ -76,10 +82,11 @@ export const spec = {
       imp.ortb2 && delete imp.ortb2;
       payload.imps.push(imp);
     });
+
+    let urlForRequest = endpointUrl || getEndpointUrl(bidderRequest.bidderCode)
     return {
       method: 'POST',
-      url:
-        endpointUrl || getEndpointUrl(bidderRequest.bidderCode),
+      url: urlForRequest,
       data: payload,
     };
   },

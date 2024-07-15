@@ -1,4 +1,7 @@
-import {deepAccess, isFn, isPlainObject, isStr} from '../../src/utils.js';
+import {deepAccess, deepClone, isFn, isPlainObject, isStr} from '../../src/utils.js';
+/*
+ * @typedef {import('../modules/userId/index.js').SubmoduleContainer} SubmoduleContainer
+ */
 
 export const EID_CONFIG = new Map();
 
@@ -45,7 +48,7 @@ export function createEidsArray(bidRequestUserId) {
 
   Object.entries(bidRequestUserId).forEach(([name, values]) => {
     values = Array.isArray(values) ? values : [values];
-    const eids = name === 'pubProvidedId' ? values : values.map(value => createEidObject(value, name));
+    const eids = name === 'pubProvidedId' ? deepClone(values) : values.map(value => createEidObject(value, name));
     eids.filter(eid => eid != null).forEach(collect);
   })
   return Object.values(allEids);
